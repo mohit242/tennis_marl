@@ -20,6 +20,8 @@ class DDPGCritic(nn.Module):
         layers = [f(dim_in, dim_out) for dim_in, dim_out in zip(dims[:-1], dims[1:]) for f in (linear_func, act_func)]
         layers = layers[:-1]
         self.network = nn.Sequential(*layers)
+        self.network.apply(self.init_layer)
+        self.fcs1.apply(self.init_layer)
 
     def forward(self, state, action):
         state = torch.Tensor(state)
@@ -28,3 +30,8 @@ class DDPGCritic(nn.Module):
         x = torch.cat((xs, action), dim=-1)
         qval = self.network(x)
         return qval
+
+    def init_layer(self, layer):
+        if isinstance(layer, nn.Linear):
+            torch.nn.init.kaiming_uniform_(layer.weight)
+            torch.nn.init.constant_(layer.bias, 1.0)

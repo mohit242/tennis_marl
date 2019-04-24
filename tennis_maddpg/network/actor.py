@@ -20,8 +20,14 @@ class DDPGActor(nn.Module):
         layers = [f(dim_in, dim_out) for dim_in, dim_out in zip(dims[:-1], dims[1:]) for f in (linear_func, act_func)]
         layers = layers[:-1]
         self.network = nn.Sequential(*layers)
+        self.network.apply(self.init_layer)
 
     def forward(self, state):
         state = torch.Tensor(state)
         action = torch.clamp(F.tanh(self.network(state)), -1.0, 1.0)
         return action
+
+    def init_layer(self, layer):
+        if isinstance(layer, nn.Linear):
+            torch.nn.init.kaiming_uniform_(layer.weight)
+            torch.nn.init.constant_(layer.bias, 0.0)

@@ -7,9 +7,9 @@ import torch as torch
 
 
 if __name__=="__main__":
-    env = UnityEnvironment(file_name="Tennis_Linux/Tennis.x86")
+    env = UnityEnvironment(file_name="/home/mohit/continuous_control/Reacher_Linux/Reacher.x86")
     agent = MADDPGAgent(env, train_after_every=100, gamma=0.95, minibatch_size=128, steps_per_epoch=20,
-                        start_steps=10000)
+                        start_steps=10000, polyak=0.005, gradient_clip=0.1)
     torch.manual_seed(0)
     np.random.seed(0)
     scores = []
@@ -22,8 +22,6 @@ if __name__=="__main__":
         print("\rEpisode- {:8d} \t Score- {:+8f} \t Mean Score- {:+8f}".format(i, score, np.mean(scores_window)), end="")
         if i%100 == 0:
             print("\rEpisode- {:8d} \t Score- {:+8f} \t Mean Score- {:+8f}".format(i, score, np.mean(scores_window)))
-        if np.mean(scores_window) >= 0.5:
-            break
-        if i == 2000:
+        if np.mean(scores_window) >= 30:
             break
         i += 1
