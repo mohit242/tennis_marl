@@ -7,9 +7,9 @@ import torch as torch
 
 
 if __name__=="__main__":
-    env = UnityEnvironment(file_name="Reacher_Linux/Reacher.x86")
-    agent = MADDPGAgent(env, train_after_every=50, gamma=0.99, minibatch_size=64, steps_per_epoch=20,
-                        start_steps=10000, polyak=0.001, gradient_clip=1)
+    env = UnityEnvironment(file_name="Reacher_Linux/Reacher.x86", no_graphics=True)
+    agent = MADDPGAgent(env, train_after_every=20, gamma=0.995, minibatch_size=128, steps_per_epoch=10,
+                        start_steps=1000, polyak=0.001, gradient_clip=1.0, device='cuda')
     torch.manual_seed(0)
     np.random.seed(0)
     scores = []

@@ -2,7 +2,9 @@ from comet_ml import Experiment
 import torch
 import torch.nn.functional as F
 import numpy as np
-from .network import *
+# from .network import *
+from .ac import Actor as DDPGActor
+from .ac import Critic as DDPGCritic
 from .utils import *
 import sys
 import logging
@@ -74,7 +76,7 @@ class MADDPGAgent:
         score = np.zeros(self.num_agents)
         while True:
             action = self.actor_target(torch.Tensor(state).to(self.device))
-            # action = add_noise(action)
+            action = add_noise(action.cpu()).to(self.device)
             env_info = self.env.step(action.detach().cpu().numpy())[self.brain_name]
             next_state = env_info.vector_observations
             reward = env_info.rewards
@@ -91,6 +93,7 @@ class MADDPGAgent:
                     states = states.to(self.device)
                     actions = actions.to(self.device)
                     rewards = rewards.to(self.device)
+#                     rewards = (rewards - torch.mean(rewards))/(torch.std(rewards) + 1.0e-10)
                     next_states = next_states.to(self.device)
                     dones = dones.to(self.device)
                     q_fut = self.critic_target(next_states, self.actor_target(next_states)).squeeze(-1)
@@ -101,12 +104,13 @@ class MADDPGAgent:
                     critic_loss.backward()
                     torch.nn.utils.clip_grad_norm_(self.critic.parameters(), self.gradient_clip)
                     self.critic_opt.step()
-                    # if epc % 2 == 0:
-                    if True:
+                    if epc % 2 == 0:
+#                     if True:
                         actor_loss = -torch.mean(self.critic(states.detach(), self.actor(states)))
 
                         self.actor_opt.zero_grad()
                         actor_loss.backward()
+                        torch.nn.utils.clip_grad_norm_(self.actor.parameters(), self.gradient_clip)
                         self.actor_opt.step()
                         experiment.log_metric("critic_loss", critic_loss)
                         experiment.log_metric("actor_loss", actor_loss)
@@ -115,7 +119,8 @@ class MADDPGAgent:
 
             if np.any(done):
                 break
-        return np.max(score)
+        experiment.log_metric("score", np.mean(score))
+        return np.mean(score)
 
     def soft_update(self):
         for target_param, local_param in zip(self.actor_target.parameters(), self.actor.parameters()):
