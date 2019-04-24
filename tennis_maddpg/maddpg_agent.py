@@ -93,7 +93,7 @@ class MADDPGAgent:
                     states = states.to(self.device)
                     actions = actions.to(self.device)
                     rewards = rewards.to(self.device)
-#                     rewards = (rewards - torch.mean(rewards))/(torch.std(rewards) + 1.0e-10)
+                    rewards = (rewards - torch.mean(rewards))/(torch.std(rewards) + 1.0e-10)
                     next_states = next_states.to(self.device)
                     dones = dones.to(self.device)
                     q_fut = self.critic_target(next_states, self.actor_target(next_states)).squeeze(-1)
