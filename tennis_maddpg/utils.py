@@ -4,7 +4,7 @@ import random
 from collections import deque, namedtuple
 
 
-def process_actions(action):
+def add_noise(action):
     dist = torch.distributions.Normal(0, 0.15)
     noise = dist.sample(action.size())
     noise = torch.clamp(noise, -0.1, 0.1)
@@ -48,6 +48,7 @@ class ReplayBuffer:
     def sample(self):
         """Randomly sample a batch from memory"""
         experiences = random.sample(self.memory, k=self.batch_size)
+
 
         states = torch.from_numpy(np.vstack([e.state for e in experiences if e is not None])).float()
         actions = torch.from_numpy(np.vstack([e.action for e in experiences if e is not None])).long()
