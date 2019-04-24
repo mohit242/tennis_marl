@@ -23,7 +23,6 @@ class DDPGActor(nn.Module):
         self.network.apply(self.init_layer)
 
     def forward(self, state):
-        state = torch.Tensor(state)
         action = torch.clamp(F.tanh(self.network(state)), -1.0, 1.0)
         return action
 

@@ -12,7 +12,7 @@ experiment = Experiment(api_key="FhiGGed6g73CWKq7YS2AEDSaL",
 class MADDPGAgent:
 
     def __init__(self, env, start_steps=1000, train_after_every=20, steps_per_epoch=10, gradient_clip=2, gamma=0.95,
-                 device='cpu',minibatch_size=256, buffer_size=10e5, polyak=0.01):
+                 device='cpu', minibatch_size=256, buffer_size=10e5, polyak=0.01):
         super().__init__()
         self.device = device
         self.minibatch_size = minibatch_size
@@ -30,8 +30,8 @@ class MADDPGAgent:
         self.action_dim = self.brain.vector_action_space_size
         self.state_dim = env_info.vector_observations.shape[1]
         # For this particular scenario we are using the same actor for both agents
-        self.actor = DDPGActor(self.state_dim, self.action_dim)
-        self.critic = DDPGCritic(self.state_dim, self.action_dim)
+        self.actor = DDPGActor(self.state_dim, self.action_dim).to(device)
+        self.critic = DDPGCritic(self.state_dim, self.action_dim).to(device)
         self.critic_opt = torch.optim.Adam(self.critic.parameters(), lr=3e-4, weight_decay=0.0001)
         self.actor_opt = torch.optim.Adam(self.actor.parameters(), lr=1e-4)
         self.replay_buffer = ReplayBuffer(self.action_dim, int(buffer_size), minibatch_size)
@@ -41,8 +41,8 @@ class MADDPGAgent:
                            "steps_per_epoch": steps_per_epoch, "gradient_clip": gradient_clip, "gamma": gamma,
                            "minibatch_size": minibatch_size, "polyak": polyak}
         experiment.log_multiple_params(hyperparameters)
-        self.actor_target = DDPGActor(self.state_dim, self.action_dim)
-        self.critic_target = DDPGCritic(self.state_dim, self.action_dim)
+        self.actor_target = DDPGActor(self.state_dim, self.action_dim).to(device)
+        self.critic_target = DDPGCritic(self.state_dim, self.action_dim).to(device)
         self.step_counter = 0
         # for target_param, local_param in zip(self.actor_target.parameters(), self.actor.parameters()):
         #     target_param.data.copy_(local_param.data)
@@ -73,21 +73,26 @@ class MADDPGAgent:
         state = env_info.vector_observations
         score = np.zeros(self.num_agents)
         while True:
-            action = self.actor_target(state)
+            action = self.actor_target(torch.Tensor(state).to(self.device))
             # action = add_noise(action)
-            env_info = self.env.step(action.detach().numpy())[self.brain_name]
+            env_info = self.env.step(action.detach().cpu().numpy())[self.brain_name]
             next_state = env_info.vector_observations
             reward = env_info.rewards
             score += reward
             done = env_info.local_done
             # for s, a, r, ns, d in zip(state, action.detach().numpy(), reward, next_state, done):
             #     self.replay_buffer.add(s, a, r, ns, d)
-            self.replay_buffer.add(state, action.detach().numpy(), reward, next_state, done)
+            self.replay_buffer.add(state, action.detach().cpu().numpy(), reward, next_state, done)
             state = next_state
             self.step_counter += 1
             if self.step_counter % self.train_after_every == 0:
                 for epc in range(self.steps_per_epoch):
                     states, actions, rewards, next_states, dones = self.replay_buffer.sample()
+                    states = states.to(self.device)
+                    actions = actions.to(self.device)
+                    rewards = rewards.to(self.device)
+                    next_states = next_states.to(self.device)
+                    dones = dones.to(self.device)
                     q_fut = self.critic_target(next_states, self.actor_target(next_states)).squeeze(-1)
                     targets = rewards + self.gamma * (1 - dones) * q_fut
                     critic_loss = F.mse_loss(self.critic(states.float(), actions.float()).squeeze(-1), targets)

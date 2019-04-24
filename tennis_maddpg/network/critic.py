@@ -24,8 +24,6 @@ class DDPGCritic(nn.Module):
         self.fcs1.apply(self.init_layer)
 
     def forward(self, state, action):
-        state = torch.Tensor(state)
-        action = torch.Tensor(action)
         xs = F.elu(self.fcs1(state))
         x = torch.cat((xs, action), dim=-1)
         qval = self.network(x)
