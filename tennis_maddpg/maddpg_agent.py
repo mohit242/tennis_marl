@@ -2,15 +2,11 @@ from comet_ml import Experiment
 import torch
 import torch.nn.functional as F
 import numpy as np
-# from .network import *
 from .network import DDPGActor
 from .network import DDPGCritic
 from .utils import *
-import sys
-import logging
-# import wandb
 experiment = Experiment(api_key="FhiGGed6g73CWKq7YS2AEDSaL",
-                        project_name="tennis_marl", workspace="drl")
+                        project_name="maddpg", workspace="drl")
 class MADDPGAgent:
 
     def __init__(self, env, start_steps=1000, train_after_every=20, steps_per_epoch=10, gradient_clip=2, gamma=0.95,

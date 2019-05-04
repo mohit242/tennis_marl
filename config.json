@@ -1,0 +1,10 @@
+{
+  "train_after_every": 20,
+  "gamma": 0.995,
+  "minibatch_size": 128,
+  "steps_per_epoch": 10,
+  "start_steps": 1000,
+  "polyak": 0.001,
+  "gradient_clip": 1.0,
+  "device": "cuda"
+}
