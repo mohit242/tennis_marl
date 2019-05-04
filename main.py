@@ -16,7 +16,7 @@ if __name__=="__main__":
     args = argparser.parse_args()
     with open(args.config, 'r') as f:
         params = json.load(f)
-    env = UnityEnvironment(file_name="Reacher_Linux/Reacher.x86", no_graphics=params['no_graphics'])
+    env = UnityEnvironment(file_name="Tennis_Linux/Tennis.x86", no_graphics=params['no_graphics'])
     # agent = MADDPGAgent(env, train_after_every=20, gamma=0.995, minibatch_size=128, steps_per_epoch=10,
     #                     start_steps=1000, polyak=0.001, gradient_clip=1.0, device='cuda')
     agent = MADDPGAgent(env, train_after_every=params['train_after_every'], gamma=params['gamma'],

@@ -12,6 +12,11 @@ def add_noise(action):
     return action
 
 
+def combine_agent_tensors(x):
+    y = torch.cat((x[:, 0], x[:, 1]), -1)
+    return y
+
+
 class ReplayBuffer:
 
     def __init__(self, action_size, buffer_size, batch_size, seed=0):

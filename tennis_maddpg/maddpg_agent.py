@@ -29,7 +29,7 @@ class MADDPGAgent:
         self.state_dim = env_info.vector_observations.shape[1]
         # For this particular scenario we are using the same actor for both agents
         self.actor = DDPGActor(self.state_dim, self.action_dim).to(device)
-        self.critic = DDPGCritic(self.state_dim, self.action_dim).to(device)
+        self.critic = DDPGCritic(self.state_dim, self.action_dim, self.num_agents).to(device)
         self.critic_opt = torch.optim.Adam(self.critic.parameters(), lr=3e-4, weight_decay=0.0001)
         self.actor_opt = torch.optim.Adam(self.actor.parameters(), lr=1e-4)
         self.replay_buffer = ReplayBuffer(self.action_dim, int(buffer_size), minibatch_size)
@@ -39,7 +39,7 @@ class MADDPGAgent:
                            "minibatch_size": minibatch_size, "polyak": polyak}
         experiment.log_parameters(hyperparameters)
         self.actor_target = DDPGActor(self.state_dim, self.action_dim).to(device)
-        self.critic_target = DDPGCritic(self.state_dim, self.action_dim).to(device)
+        self.critic_target = DDPGCritic(self.state_dim, self.action_dim, self.num_agents).to(device)
         self.step_counter = 0
         # for target_param, local_param in zip(self.actor_target.parameters(), self.actor.parameters()):
         #     target_param.data.copy_(local_param.data)
@@ -91,16 +91,20 @@ class MADDPGAgent:
                     rewards = (rewards - torch.mean(rewards))/(torch.std(rewards) + 1.0e-10)
                     next_states = next_states.to(self.device)
                     dones = dones.to(self.device)
-                    q_fut = self.critic_target(next_states, self.actor_target(next_states)).squeeze(-1)
+                    q_fut = self.critic_target(combine_agent_tensors(next_states),
+                                               combine_agent_tensors(self.actor_target(next_states))).repeat(1, 2)
+
                     targets = rewards + self.gamma * (1 - dones) * q_fut
-                    critic_loss = F.mse_loss(self.critic(states.float(), actions.float()).squeeze(-1), targets)
+                    critic_loss = F.mse_loss(self.critic(combine_agent_tensors(states.float()),
+                                                         combine_agent_tensors(actions.float())).repeat(1, 2), targets)
 
                     self.critic_opt.zero_grad()
                     critic_loss.backward()
                     torch.nn.utils.clip_grad_norm_(self.critic.parameters(), self.gradient_clip)
                     self.critic_opt.step()
                     if epc % 2 == 0:
-                        actor_loss = -torch.mean(self.critic(states.detach(), self.actor(states)))
+                        actor_loss = -torch.mean(self.critic(combine_agent_tensors(states.detach()),
+                                                             combine_agent_tensors(self.actor(states))))
 
                         self.actor_opt.zero_grad()
                         actor_loss.backward()
