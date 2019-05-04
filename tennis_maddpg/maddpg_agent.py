@@ -3,8 +3,8 @@ import torch
 import torch.nn.functional as F
 import numpy as np
 # from .network import *
-from .ac import Actor as DDPGActor
-from .ac import Critic as DDPGCritic
+from .network import DDPGActor
+from .network import DDPGCritic
 from .utils import *
 import sys
 import logging
@@ -38,11 +38,10 @@ class MADDPGAgent:
         self.actor_opt = torch.optim.Adam(self.actor.parameters(), lr=1e-4)
         self.replay_buffer = ReplayBuffer(self.action_dim, int(buffer_size), minibatch_size)
 
-        #wandb.watch((self.critic, self.actor))
         hyperparameters = {"start_steps": start_steps, "train_after_every": train_after_every,
                            "steps_per_epoch": steps_per_epoch, "gradient_clip": gradient_clip, "gamma": gamma,
                            "minibatch_size": minibatch_size, "polyak": polyak}
-        experiment.log_multiple_params(hyperparameters)
+        experiment.log_parameters(hyperparameters)
         self.actor_target = DDPGActor(self.state_dim, self.action_dim).to(device)
         self.critic_target = DDPGCritic(self.state_dim, self.action_dim).to(device)
         self.step_counter = 0
@@ -105,7 +104,6 @@ class MADDPGAgent:
                     torch.nn.utils.clip_grad_norm_(self.critic.parameters(), self.gradient_clip)
                     self.critic_opt.step()
                     if epc % 2 == 0:
-#                     if True:
                         actor_loss = -torch.mean(self.critic(states.detach(), self.actor(states)))
 
                         self.actor_opt.zero_grad()
@@ -114,7 +112,6 @@ class MADDPGAgent:
                         self.actor_opt.step()
                         experiment.log_metric("critic_loss", critic_loss)
                         experiment.log_metric("actor_loss", actor_loss)
-                        #wandb.log({"critic_loss": critic_loss, "actor_loss": actor_loss})
                     self.soft_update()
 
             if np.any(done):
