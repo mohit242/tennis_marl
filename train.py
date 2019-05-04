@@ -38,3 +38,7 @@ if __name__=="__main__":
         if np.mean(scores_window) >= 30:
             break
         i += 1
+    torch.save(agent.actor.state_dict(), 'maddpg_actor.pth')
+    torch.save(agent.critic.state_dict(), 'maddpg_critic.pth')
+    experiment.log_asset('maddpg_actor.pth')
+    experiment.log_asset('maddpg_critic.pth')
