@@ -84,7 +84,8 @@ class MADDPGAgent:
             self.step_counter += 1
             if self.step_counter % self.train_after_every == 0:
                 for epc in range(self.steps_per_epoch):
-                    states, actions, rewards, next_states, dones = self.replay_buffer.sample()
+                    states, actions, rewards, next_states, dones = self.replay_buffer.sample(
+                        priority=True if self.step_counter < 1000 else False)
                     states = states.to(self.device)
                     actions = actions.to(self.device)
                     rewards = rewards.to(self.device)

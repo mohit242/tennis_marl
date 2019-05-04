@@ -50,9 +50,17 @@ class ReplayBuffer:
         e = self.Experience(state, action, reward, next_state, done)
         self.memory.append(e)
 
-    def sample(self):
+    def sample(self, priority=False):
         """Randomly sample a batch from memory"""
-        experiences = random.sample(self.memory, k=self.batch_size)
+
+        if priority == True:
+            probs = np.array([max(e.reward[0], e.reward[1]) for e in self.memory if e is not None])
+            probs = np.exp(probs)
+            probs = probs / probs.sum()
+            idx = np.random.choice(len(self.memory), self.batch_size, p=probs)
+            experiences = [self.memory[i] for i in idx]
+        else:
+            experiences = random.sample(self.memory, k=self.batch_size)
 
 
         # states = torch.from_numpy(np.vstack([e.state for e in experiences if e is not None])).float()
