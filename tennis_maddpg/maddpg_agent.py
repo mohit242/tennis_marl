@@ -1,12 +1,11 @@
-from comet_ml import Experiment
 import torch
 import torch.nn.functional as F
 import numpy as np
 from .network import DDPGActor
 from .network import DDPGCritic
 from .utils import *
-experiment = Experiment(api_key="FhiGGed6g73CWKq7YS2AEDSaL",
-                        project_name="maddpg", workspace="drl")
+
+
 class MADDPGAgent:
 
     def __init__(self, env, start_steps=1000, train_after_every=20, steps_per_epoch=10, gradient_clip=2, gamma=0.95,
@@ -36,10 +35,6 @@ class MADDPGAgent:
         self.actor_opt = torch.optim.Adam(self.actor.parameters(), lr=1e-3)
         self.replay_buffer = ReplayBuffer(self.action_dim, int(buffer_size), minibatch_size)
 
-        hyperparameters = {"start_steps": start_steps, "train_after_every": train_after_every,
-                           "steps_per_epoch": steps_per_epoch, "gradient_clip": gradient_clip, "gamma": gamma,
-                           "minibatch_size": minibatch_size, "polyak": polyak}
-        experiment.log_parameters(hyperparameters)
         self.actor_target = DDPGActor(self.state_dim, self.action_dim).to(device)
         self.critic_target = DDPGCritic(self.state_dim, self.action_dim, self.num_agents).to(device)
         self.step_counter = 0
@@ -128,14 +123,11 @@ class MADDPGAgent:
                         actor_loss.backward()
                         torch.nn.utils.clip_grad_norm_(self.actor.parameters(), self.gradient_clip)
                         self.actor_opt.step()
-                        experiment.log_metric("critic_loss", critic_loss)
-                        experiment.log_metric("actor_loss", actor_loss)
                     self.soft_update()
 
             if np.any(done):
                 self.std *= self.std_decay
                 break
-        experiment.log_metric("score", np.max(score))
         return np.max(score)
 
     def soft_update(self):
