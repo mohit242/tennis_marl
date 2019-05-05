@@ -4,14 +4,6 @@ import random
 from collections import deque, namedtuple
 
 
-def add_noise(action):
-    dist = torch.distributions.Normal(0, 0.15)
-    noise = dist.sample(action.size())
-    noise = torch.clamp(noise, -0.1, 0.1)
-    action = torch.clamp(action + noise, -1, 1)
-    return action
-
-
 def combine_agent_tensors(x):
     y = torch.cat((x[:, 0], x[:, 1]), -1)
     return y

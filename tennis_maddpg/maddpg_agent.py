@@ -10,7 +10,7 @@ experiment = Experiment(api_key="FhiGGed6g73CWKq7YS2AEDSaL",
 class MADDPGAgent:
 
     def __init__(self, env, start_steps=1000, train_after_every=20, steps_per_epoch=10, gradient_clip=2, gamma=0.95,
-                 device='cpu', minibatch_size=256, buffer_size=10e5, polyak=0.01):
+                 device='cpu', minibatch_size=256, buffer_size=10e5, polyak=0.01, std_start=1.0, std_decay=0.999):
         super().__init__()
         self.device = device
         self.minibatch_size = minibatch_size
@@ -21,6 +21,8 @@ class MADDPGAgent:
         self.gamma = gamma
         self.polyak = polyak
         self.start_steps = start_steps
+        self.std = std_start
+        self.std_decay = std_decay
         self.brain_name = env.brain_names[0]
         self.brain = env.brains[self.brain_name]
         env_info = env.reset(train_mode=True)[self.brain_name]
@@ -76,7 +78,8 @@ class MADDPGAgent:
                 action = self.actor(torch.Tensor(state).to(self.device))
             self.actor.train()
             print(action)
-            action = add_noise(action.cpu()).to(self.device)
+            action += self.noise(action.size()).to(self.device)
+            action = torch.clamp(action, -1.0, 1.0)
             env_info = self.env.step(action.detach().cpu().numpy())[self.brain_name]
             next_state = env_info.vector_observations
             reward = env_info.rewards
@@ -97,8 +100,11 @@ class MADDPGAgent:
                     rewards = (rewards - torch.mean(rewards))/(torch.std(rewards) + 1.0e-10)
                     next_states = next_states.to(self.device)
                     dones = dones.to(self.device)
+                    next_actions = self.actor_target(next_states)
+                    noise = torch.clamp(self.noise(next_actions.size()).to(self.device), -0.2, 0.2)
+                    next_actions = torch.clamp(next_actions + noise, -1.0, 1.0)
                     q_fut = self.critic_target(combine_agent_tensors(next_states),
-                                               combine_agent_tensors(self.actor_target(next_states))).repeat(1, 2)
+                                               combine_agent_tensors(next_actions)).repeat(1, 2)
 
                     targets = rewards + self.gamma * (1 - dones) * q_fut
                     critic_loss = 0.5 * F.mse_loss(self.critic(combine_agent_tensors(states.float()),
@@ -121,6 +127,7 @@ class MADDPGAgent:
                     self.soft_update()
 
             if np.any(done):
+                self.std *= self.std_decay
                 break
         experiment.log_metric("score", np.max(score))
         return np.max(score)
@@ -135,4 +142,8 @@ class MADDPGAgent:
     def eval_step(self):
         pass
 
+    def noise(self, shape):
+        dist = torch.distributions.Normal(0, self.std)
+        noise_sample = dist.sample(shape)
+        return noise_sample
 
