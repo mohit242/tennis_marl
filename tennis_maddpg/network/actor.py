@@ -1,10 +1,12 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import numpy as np
+
 
 class DDPGActor(nn.Module):
 
-    def __init__(self, state_dim, action_dim, hidden_units=(128, 128, 64), gate=nn.ELU()):
+    def __init__(self, state_dim, action_dim, hidden_units=(128, 128, 64), gate=nn.ReLU()):
         """ Network class for PPO actor network
 
         Args:
@@ -21,12 +23,16 @@ class DDPGActor(nn.Module):
         layers = layers[:-1]
         self.network = nn.Sequential(*layers)
         self.network.apply(self.init_layer)
+        self.network[-1].weight.data.uniform_(-3e-3, 3e-3)
 
     def forward(self, state):
-        action = torch.clamp(F.tanh(self.network(state)), -1.0, 1.0)
+        action = F.tanh(self.network(state))
         return action
 
     def init_layer(self, layer):
         if isinstance(layer, nn.Linear):
-            torch.nn.init.kaiming_uniform_(layer.weight)
-            torch.nn.init.constant_(layer.bias, 0.0)
+            fan_in = layer.weight.data.size()[0]
+            lim = 1. / np.sqrt(fan_in)
+            layer.weight.data.uniform_(-lim, lim)
+            # torch.nn.init.kaiming_uniform_(layer.weight)
+            # torch.nn.init.constant_(layer.bias, 10e-5)

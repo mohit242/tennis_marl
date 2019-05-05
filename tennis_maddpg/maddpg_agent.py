@@ -41,19 +41,20 @@ class MADDPGAgent:
         self.actor_target = DDPGActor(self.state_dim, self.action_dim).to(device)
         self.critic_target = DDPGCritic(self.state_dim, self.action_dim, self.num_agents).to(device)
         self.step_counter = 0
-        # for target_param, local_param in zip(self.actor_target.parameters(), self.actor.parameters()):
-        #     target_param.data.copy_(local_param.data)
-        #
-        # for target_param, local_param in zip(self.critic_target.parameters(), self.critic.parameters()):
-        #     target_param.data.copy_(local_param.data)
+        for target_param, local_param in zip(self.actor_target.parameters(), self.actor.parameters()):
+            target_param.data.copy_(local_param.data)
+
+        for target_param, local_param in zip(self.critic_target.parameters(), self.critic.parameters()):
+            target_param.data.copy_(local_param.data)
 
     def learn_step(self):
         if len(self.replay_buffer) < self.start_steps:
             env_info = self.env.reset(train_mode=True)[self.brain_name]
             state = env_info.vector_observations
             for _ in range(self.start_steps):
-                action = np.random.uniform(-1, 1, (self.num_agents, self.action_dim))
-                # action = np.clip(action, -1, 1)
+                # action = np.random.uniform(-1, 1, (self.num_agents, self.action_dim))
+                action = np.random.normal(0, 0.2, (self.num_agents, self.action_dim))
+                action = np.clip(action, -1, 1)
                 env_info = self.env.step(action)[self.brain_name]
                 next_state = env_info.vector_observations
                 reward = np.array(env_info.rewards)
@@ -74,6 +75,7 @@ class MADDPGAgent:
             with torch.no_grad():
                 action = self.actor(torch.Tensor(state).to(self.device))
             self.actor.train()
+            print(action)
             action = add_noise(action.cpu()).to(self.device)
             env_info = self.env.step(action.detach().cpu().numpy())[self.brain_name]
             next_state = env_info.vector_observations
@@ -90,6 +92,7 @@ class MADDPGAgent:
                     states, actions, rewards, next_states, dones = self.replay_buffer.sample()
                     states = states.to(self.device)
                     actions = actions.to(self.device)
+                    # rewards = rewards.max(-1, keepdim=True)[0].repeat(1, 2)
                     rewards = rewards.to(self.device)
                     rewards = (rewards - torch.mean(rewards))/(torch.std(rewards) + 1.0e-10)
                     next_states = next_states.to(self.device)
@@ -98,15 +101,15 @@ class MADDPGAgent:
                                                combine_agent_tensors(self.actor_target(next_states))).repeat(1, 2)
 
                     targets = rewards + self.gamma * (1 - dones) * q_fut
-                    critic_loss = F.mse_loss(self.critic(combine_agent_tensors(states.float()),
+                    critic_loss = 0.5 * F.mse_loss(self.critic(combine_agent_tensors(states.float()),
                                                          combine_agent_tensors(actions.float())).repeat(1, 2), targets)
 
                     self.critic_opt.zero_grad()
                     critic_loss.backward()
                     torch.nn.utils.clip_grad_norm_(self.critic.parameters(), self.gradient_clip)
                     self.critic_opt.step()
-                    if epc % 2 == 0:
-                        actor_loss = -torch.mean(self.critic(combine_agent_tensors(states.detach()),
+                    if epc % 1 == 0:
+                        actor_loss = -0.5 * torch.mean(self.critic(combine_agent_tensors(states.detach()),
                                                              combine_agent_tensors(self.actor(states))))
 
                         self.actor_opt.zero_grad()
@@ -118,10 +121,9 @@ class MADDPGAgent:
                     self.soft_update()
 
             if np.any(done):
-                print("\n--------\n{}------\n".format(self.step_counter))
                 break
-        experiment.log_metric("score", np.mean(score))
-        return np.mean(score)
+        experiment.log_metric("score", np.max(score))
+        return np.max(score)
 
     def soft_update(self):
         for target_param, local_param in zip(self.actor_target.parameters(), self.actor.parameters()):

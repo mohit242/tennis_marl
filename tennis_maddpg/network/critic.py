@@ -1,6 +1,8 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import numpy as np
+
 
 class DDPGCritic(nn.Module):
 
@@ -22,6 +24,7 @@ class DDPGCritic(nn.Module):
         self.network = nn.Sequential(*layers)
         self.network.apply(self.init_layer)
         self.fcs1.apply(self.init_layer)
+        self.network[-1].weight.data.uniform_(-3e-3, 3e-3)
 
     def forward(self, state, action):
         xs = F.elu(self.fcs1(state))
@@ -31,5 +34,8 @@ class DDPGCritic(nn.Module):
 
     def init_layer(self, layer):
         if isinstance(layer, nn.Linear):
-            torch.nn.init.kaiming_uniform_(layer.weight)
-            torch.nn.init.constant_(layer.bias, 1.0)
+            fan_in = layer.weight.data.size()[0]
+            lim = 1. / np.sqrt(fan_in)
+            layer.weight.data.uniform_(-lim, lim)
+            # torch.nn.init.kaiming_uniform_(layer.weight)
+            # torch.nn.init.constant_(layer.bias, 10e-5)
