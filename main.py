@@ -1,5 +1,4 @@
 from tennis_maddpg.maddpg_agent import MADDPGAgent
-from tennis_maddpg.maddpg_agent import experiment
 from unityagents import UnityEnvironment
 from collections import deque
 import numpy as np
@@ -25,20 +24,27 @@ if __name__=="__main__":
                         device=params['device'])
     torch.manual_seed(params['seed'])
     np.random.seed(params['seed'])
-    scores = []
-    scores_window = deque(maxlen=100)
-    i = 1
-    while True:
-        score = agent.learn_step()
-        scores.append(score)
-        scores_window.append(score)
-        print("\rEpisode- {:8d} \t Score- {:+8f} \t Mean Score- {:+8f}".format(i, score, np.mean(scores_window)), end="")
-        if i%100 == 0:
-            print("\rEpisode- {:8d} \t Score- {:+8f} \t Mean Score- {:+8f}".format(i, score, np.mean(scores_window)))
-        if np.mean(scores_window) >= 0.5:
-            break
-        i += 1
-    torch.save(agent.actor.state_dict(), 'maddpg_actor.pth')
-    torch.save(agent.critic.state_dict(), 'maddpg_critic.pth')
-    experiment.log_asset('maddpg_actor.pth')
-    experiment.log_asset('maddpg_critic.pth')
+    if not args.play:
+        scores = []
+        scores_window = deque(maxlen=100)
+        i = 1
+        while True:
+            score = agent.learn_step()
+            scores.append(score)
+            scores_window.append(score)
+            print("\rEpisode- {:8d} \t Score- {:+8f} \t Mean Score- {:+8f}".format(i, score, np.mean(scores_window)), end="")
+            if i%100 == 0:
+                print("\rEpisode- {:8d} \t Score- {:+8f} \t Mean Score- {:+8f}".format(i, score, np.mean(scores_window)))
+            if np.mean(scores_window) >= 0.5:
+                break
+            i += 1
+        torch.save(agent.actor.state_dict(), 'maddpg_actor.pth')
+        torch.save(agent.critic.state_dict(), 'maddpg_critic.pth')
+    else:
+        score = 0
+        agent.actor.load_state_dict(torch.load('maddpg_actor.pth'))
+        agent.critic.load_state_dict(torch.load('maddpg_critic.pth'))
+        while True:
+            score = agent.eval_step()
+            print("Evaluation: Agents score {} points".format(score))
+

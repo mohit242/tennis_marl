@@ -146,7 +146,22 @@ class MADDPGAgent:
             target_param.data.copy_(self.polyak*local_param.data + (1.0 - self.polyak)*target_param.data)
 
     def eval_step(self):
-        pass
+        env_info = self.env.reset(train_mode=False)[self.brain_name]
+        state = env_info.vector_observations
+        score = np.zeros(self.num_agents)
+        while True:
+            with torch.no_grad():
+                action = self.actor(torch.Tensor(state).to(self.device))
+            env_info = self.env.step(action.detach().cpu().numpy())[self.brain_name]
+            next_state = env_info.vector_observations
+            reward = env_info.rewards
+            score += reward
+            done = env_info.local_done
+            state = next_state
+            if np.any(done):
+                break
+        return np.max(score)
+
 
     def noise(self, shape):
         dist = torch.distributions.Normal(0, self.std)
