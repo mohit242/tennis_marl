@@ -42,9 +42,9 @@ if __name__=="__main__":
         torch.save(agent.critic.state_dict(), 'maddpg_critic.pth')
     else:
         score = 0
-        agent.actor.load_state_dict(torch.load('maddpg_actor.pth'))
-        agent.critic.load_state_dict(torch.load('maddpg_critic.pth'))
-        while True:
+        agent.actor.load_state_dict(torch.load('maddpg_actor.pth',  map_location=lambda storage, loc: storage))
+        agent.critic.load_state_dict(torch.load('maddpg_critic.pth',  map_location=lambda storage, loc: storage))
+        for _ in range(10):
             score = agent.eval_step()
-            print("Evaluation: Agents score {} points".format(score))
+            print("Evaluation episode: Agents score {} points".format(score))
 

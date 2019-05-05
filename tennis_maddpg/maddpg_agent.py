@@ -9,7 +9,8 @@ from .utils import *
 class MADDPGAgent:
 
     def __init__(self, env, start_steps=1000, train_after_every=20, steps_per_epoch=10, gradient_clip=2, gamma=0.95,
-                 device='cpu', minibatch_size=256, buffer_size=10e5, polyak=0.01, std_start=5.0, std_decay=0.999):
+                 device='cpu', minibatch_size=256, buffer_size=10e5, polyak=0.01, std_start=5.0, std_decay=0.999,
+                 max_epsd_len=10e4):
         super().__init__()
         self.device = device
         self.minibatch_size = minibatch_size
@@ -22,6 +23,7 @@ class MADDPGAgent:
         self.start_steps = start_steps
         self.std = std_start
         self.std_decay = std_decay
+        self.max_epsd_len = max_epsd_len
         self.brain_name = env.brain_names[0]
         self.brain = env.brains[self.brain_name]
         env_info = env.reset(train_mode=True)[self.brain_name]
@@ -49,9 +51,6 @@ class MADDPGAgent:
             env_info = self.env.reset(train_mode=True)[self.brain_name]
             state = env_info.vector_observations
             for _ in range(self.start_steps):
-                # action = np.random.uniform(-1, 1, (self.num_agents, self.action_dim))
-                # action = np.random.normal(0, 0.2, (self.num_agents, self.action_dim))
-                # action = np.clip(action, -1, 1)
                 self.actor.eval()
                 with torch.no_grad():
                     action = self.actor(torch.Tensor(state).to(self.device))
@@ -62,8 +61,6 @@ class MADDPGAgent:
                 next_state = env_info.vector_observations
                 reward = np.array(env_info.rewards)
                 done = np.array(env_info.local_done)
-                # for s, a, r, ns, d in zip(state, action, reward, next_state, done):
-                #     self.replay_buffer.add(s, a, r, ns, d)
                 self.replay_buffer.add(state, action, reward, next_state, done)
                 state = next_state
                 if np.any(done):
@@ -73,7 +70,9 @@ class MADDPGAgent:
         env_info = self.env.reset(train_mode=True)[self.brain_name]
         state = env_info.vector_observations
         score = np.zeros(self.num_agents)
+        tcount = 0
         while True:
+            tcount += 1
             self.actor.eval()
             with torch.no_grad():
                 action = self.actor(torch.Tensor(state).to(self.device))
@@ -85,8 +84,6 @@ class MADDPGAgent:
             reward = env_info.rewards
             score += reward
             done = env_info.local_done
-            # for s, a, r, ns, d in zip(state, action.detach().numpy(), reward, next_state, done):
-            #     self.replay_buffer.add(s, a, r, ns, d)
             self.replay_buffer.add(state, action.detach().cpu().numpy(), reward, next_state, done)
             state = next_state
             self.step_counter += 1
@@ -95,7 +92,6 @@ class MADDPGAgent:
                     states, actions, rewards, next_states, dones = self.replay_buffer.sample()
                     states = states.to(self.device)
                     actions = actions.to(self.device)
-                    # rewards = rewards.max(-1, keepdim=True)[0].repeat(1, 2)
                     rewards = rewards.to(self.device)
                     rewards = (rewards - torch.mean(rewards))/(torch.std(rewards) + 1.0e-10)
                     next_states = next_states.to(self.device)
@@ -105,7 +101,7 @@ class MADDPGAgent:
                     next_actions = torch.clamp(next_actions + noise, -1.0, 1.0)
                     q_fut = self.critic_target(combine_agent_tensors(next_states),
                                                combine_agent_tensors(next_actions)).repeat(1, 2)
-                    # print(q_fut)
+
 
                     targets = rewards + self.gamma * (1 - dones) * q_fut
                     critic_loss = F.mse_loss(self.critic(combine_agent_tensors(states.float()),
@@ -125,7 +121,7 @@ class MADDPGAgent:
                         self.actor_opt.step()
                     self.soft_update()
 
-            if np.any(done):
+            if np.any(done) or tcount > self.max_epsd_len:
                 self.std *= self.std_decay
                 break
         return np.max(score)
@@ -153,7 +149,6 @@ class MADDPGAgent:
             if np.any(done):
                 break
         return np.max(score)
-
 
     def noise(self, shape):
         dist = torch.distributions.Normal(0, self.std)

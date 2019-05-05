@@ -1,5 +1,5 @@
 {
-  "no_graphics": true,
+  "no_graphics": false,
   "train_after_every": 10,
   "gamma": 0.99,
   "minibatch_size": 256,

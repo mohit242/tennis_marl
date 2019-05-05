@@ -35,5 +35,3 @@ class DDPGActor(nn.Module):
             fan_in = layer.weight.data.size()[0]
             lim = 1. / np.sqrt(fan_in)
             layer.weight.data.uniform_(-lim, lim)
-            # torch.nn.init.kaiming_uniform_(layer.weight)
-            # torch.nn.init.constant_(layer.bias, 10e-5)
