@@ -35,7 +35,7 @@ if __name__=="__main__":
         print("\rEpisode- {:8d} \t Score- {:+8f} \t Mean Score- {:+8f}".format(i, score, np.mean(scores_window)), end="")
         if i%100 == 0:
             print("\rEpisode- {:8d} \t Score- {:+8f} \t Mean Score- {:+8f}".format(i, score, np.mean(scores_window)))
-        if np.mean(scores_window) >= 30:
+        if np.mean(scores_window) >= 0.5:
             break
         i += 1
     torch.save(agent.actor.state_dict(), 'maddpg_actor.pth')
