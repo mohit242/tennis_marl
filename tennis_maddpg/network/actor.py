@@ -26,6 +26,7 @@ class DDPGActor(nn.Module):
         self.network[-1].weight.data.uniform_(-3e-3, 3e-3)
 
     def forward(self, state):
+        # state /= 100.0
         action = F.tanh(self.network(state))
         return action
 

@@ -10,7 +10,7 @@ experiment = Experiment(api_key="FhiGGed6g73CWKq7YS2AEDSaL",
 class MADDPGAgent:
 
     def __init__(self, env, start_steps=1000, train_after_every=20, steps_per_epoch=10, gradient_clip=2, gamma=0.95,
-                 device='cpu', minibatch_size=256, buffer_size=10e5, polyak=0.01, std_start=1.0, std_decay=0.999):
+                 device='cpu', minibatch_size=256, buffer_size=10e5, polyak=0.01, std_start=5.0, std_decay=0.999):
         super().__init__()
         self.device = device
         self.minibatch_size = minibatch_size
@@ -55,8 +55,14 @@ class MADDPGAgent:
             state = env_info.vector_observations
             for _ in range(self.start_steps):
                 # action = np.random.uniform(-1, 1, (self.num_agents, self.action_dim))
-                action = np.random.normal(0, 0.2, (self.num_agents, self.action_dim))
-                action = np.clip(action, -1, 1)
+                # action = np.random.normal(0, 0.2, (self.num_agents, self.action_dim))
+                # action = np.clip(action, -1, 1)
+                self.actor.eval()
+                with torch.no_grad():
+                    action = self.actor(torch.Tensor(state).to(self.device))
+                self.actor.train()
+                action += self.noise(action.size()).to(self.device)
+                action = torch.clamp(action, -1.0, 1.0).cpu().detach().numpy()
                 env_info = self.env.step(action)[self.brain_name]
                 next_state = env_info.vector_observations
                 reward = np.array(env_info.rewards)
@@ -77,7 +83,6 @@ class MADDPGAgent:
             with torch.no_grad():
                 action = self.actor(torch.Tensor(state).to(self.device))
             self.actor.train()
-            print(action)
             action += self.noise(action.size()).to(self.device)
             action = torch.clamp(action, -1.0, 1.0)
             env_info = self.env.step(action.detach().cpu().numpy())[self.brain_name]
@@ -105,18 +110,19 @@ class MADDPGAgent:
                     next_actions = torch.clamp(next_actions + noise, -1.0, 1.0)
                     q_fut = self.critic_target(combine_agent_tensors(next_states),
                                                combine_agent_tensors(next_actions)).repeat(1, 2)
+                    # print(q_fut)
 
                     targets = rewards + self.gamma * (1 - dones) * q_fut
-                    critic_loss = 0.5 * F.mse_loss(self.critic(combine_agent_tensors(states.float()),
+                    critic_loss = F.mse_loss(self.critic(combine_agent_tensors(states.float()),
                                                          combine_agent_tensors(actions.float())).repeat(1, 2), targets)
 
                     self.critic_opt.zero_grad()
                     critic_loss.backward()
                     torch.nn.utils.clip_grad_norm_(self.critic.parameters(), self.gradient_clip)
                     self.critic_opt.step()
-                    if epc % 1 == 0:
-                        actor_loss = -0.5 * torch.mean(self.critic(combine_agent_tensors(states.detach()),
-                                                             combine_agent_tensors(self.actor(states))))
+                    if epc % 2 == 0:
+                        actor_loss = -self.critic(combine_agent_tensors(states.detach()),
+                                                             combine_agent_tensors(self.actor(states))).mean()
 
                         self.actor_opt.zero_grad()
                         actor_loss.backward()

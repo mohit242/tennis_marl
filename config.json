@@ -1,12 +1,12 @@
 {
-  "no_graphics": true,
-  "train_after_every": 20,
-  "gamma": 0.995,
-  "minibatch_size": 128,
+  "no_graphics": false,
+  "train_after_every": 10,
+  "gamma": 0.99,
+  "minibatch_size": 256,
   "steps_per_epoch": 10,
-  "start_steps": 1000,
-  "polyak": 0.001,
-  "gradient_clip": 1.0,
-  "device": "cuda",
-  "seed": 99
+  "start_steps": 300,
+  "polyak": 0.003,
+  "gradient_clip": 0.5,
+  "device": "cpu",
+  "seed": 19
 }
