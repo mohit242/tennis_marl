@@ -118,7 +118,7 @@ class MADDPGAgent:
                     self.soft_update()
 
             if np.any(done):
-                print(self.step_counter)
+                print("\n--------\n{}------\n".format(self.step_counter))
                 break
         experiment.log_metric("score", np.mean(score))
         return np.mean(score)
