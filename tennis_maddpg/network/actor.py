@@ -4,7 +4,7 @@ import torch.nn.functional as F
 
 class DDPGActor(nn.Module):
 
-    def __init__(self, state_dim, action_dim, hidden_units=(128, 64, 64), gate=nn.ELU()):
+    def __init__(self, state_dim, action_dim, hidden_units=(128, 128, 64), gate=nn.ELU()):
         """ Network class for PPO actor network
 
         Args:

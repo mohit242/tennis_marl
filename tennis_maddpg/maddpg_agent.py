@@ -30,8 +30,8 @@ class MADDPGAgent:
         # For this particular scenario we are using the same actor for both agents
         self.actor = DDPGActor(self.state_dim, self.action_dim).to(device)
         self.critic = DDPGCritic(self.state_dim, self.action_dim, self.num_agents).to(device)
-        self.critic_opt = torch.optim.Adam(self.critic.parameters(), lr=3e-4, weight_decay=0.0001)
-        self.actor_opt = torch.optim.Adam(self.actor.parameters(), lr=1e-4)
+        self.critic_opt = torch.optim.Adam(self.critic.parameters(), lr=2e-3)
+        self.actor_opt = torch.optim.Adam(self.actor.parameters(), lr=1e-3)
         self.replay_buffer = ReplayBuffer(self.action_dim, int(buffer_size), minibatch_size)
 
         hyperparameters = {"start_steps": start_steps, "train_after_every": train_after_every,
