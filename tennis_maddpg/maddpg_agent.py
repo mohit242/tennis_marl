@@ -70,7 +70,10 @@ class MADDPGAgent:
         state = env_info.vector_observations
         score = np.zeros(self.num_agents)
         while True:
-            action = self.actor_target(torch.Tensor(state).to(self.device))
+            self.actor.eval()
+            with torch.no_grad():
+                action = self.actor(torch.Tensor(state).to(self.device))
+            self.actor.train()
             action = add_noise(action.cpu()).to(self.device)
             env_info = self.env.step(action.detach().cpu().numpy())[self.brain_name]
             next_state = env_info.vector_observations
@@ -84,8 +87,7 @@ class MADDPGAgent:
             self.step_counter += 1
             if self.step_counter % self.train_after_every == 0:
                 for epc in range(self.steps_per_epoch):
-                    states, actions, rewards, next_states, dones = self.replay_buffer.sample(
-                        priority=True if self.step_counter < 1000 else False)
+                    states, actions, rewards, next_states, dones = self.replay_buffer.sample()
                     states = states.to(self.device)
                     actions = actions.to(self.device)
                     rewards = rewards.to(self.device)
