@@ -137,7 +137,9 @@ class MADDPGAgent:
         env_info = self.env.reset(train_mode=False)[self.brain_name]
         state = env_info.vector_observations
         score = np.zeros(self.num_agents)
+        tcount = 0
         while True:
+            tcount += 1
             with torch.no_grad():
                 action = self.actor(torch.Tensor(state).to(self.device))
             env_info = self.env.step(action.detach().cpu().numpy())[self.brain_name]
@@ -146,7 +148,7 @@ class MADDPGAgent:
             score += reward
             done = env_info.local_done
             state = next_state
-            if np.any(done):
+            if np.any(done) or tcount > 500:
                 break
         return np.max(score)
 

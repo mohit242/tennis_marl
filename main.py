@@ -44,6 +44,7 @@ if __name__=="__main__":
         score = 0
         agent.actor.load_state_dict(torch.load('maddpg_actor.pth',  map_location=lambda storage, loc: storage))
         agent.critic.load_state_dict(torch.load('maddpg_critic.pth',  map_location=lambda storage, loc: storage))
+        print("The agent will run for a maximum of 500 steps per episode.")
         for _ in range(10):
             score = agent.eval_step()
             print("Evaluation episode: Agents score {} points".format(score))
